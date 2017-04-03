@@ -64,32 +64,38 @@ def run_until_threshold(TOLERANCE, SLEEP_TIME):
         time.sleep(SLEEP_TIME) # hang out and do nothing for x seconds
     return last_read
 
-def record_data(NUM_MEASUREMENTS, SLEEP_TIME, SAVE_FILE_NAME):
+def record_data(NUM_MEASUREMENTS, SLEEP_TIME, SAVE_FILE_NAME, MAX_TIME):
     """
     Records data to save into <SAVE_FILE_NAME>.csv
     Starts recording after RUN_UNTIL_THRESHOLD() finishes executing
     """
+    start_time = datetime.now()
     writer = csv.writer(open(SAVE_FILE_NAME, "w"))
     for i in range(NUM_MEASUREMENTS):
         acc_read = readadc_with_settings() # read the analog pin
     	writer.writerow([time.strftime("%H:%M:%S", time.gmtime()), acc_read])
         time.sleep(SLEEP_TIME) # hang out and do nothing for x seconds
+        time_taken = datetime.now() - start_time
+        if (time_taken.total_seconds() > MAX_TIME):
+            break
+    return start_time
 
 def main():
     GPIO.setmode(GPIO.BCM)
-    start_time = datetime.datetime.now()
     # ~~~~~~~ OPTIONS TO CONFIGURE ~~~~~~~~~
     num_measurements = 30000
     tolerance = 2
     sleep_time = 0.001
     save_file_name =  "saved_CSVs/"+"our_data.csv"
+    max_time = 10
     # ~~~~~~~ ==================== ~~~~~~~~~
     run_until_threshold(tolerance, sleep_time)
-    record_data(num_measurements, sleep_time, save_file_name)
+    start_time = record_data(num_measurements, sleep_time, save_file_name, max_time)
     # ~~~~~~~   HELPFUL MESSAGES   ~~~~~~~~~
+    time_taken = datetime.now() - start_time
     print("Data Recording Complete!")
     print("  Num Measurements: "+str(num_measurements))
-    print("        Time Taken: "+str(time_taken))
+    print("        Time Taken: "+str(time_taken.total_seconds())+" seconds")
     print("          Saved To: "+save_file_name)
     print("         Tolerance: "+str(tolerance))
 
