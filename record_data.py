@@ -106,7 +106,6 @@ def run_until_threshold(NUM_BEFORE, TOLERANCE, SLEEP_TIME, MEAN):
     """
     Runs until we have a difference from the mean of more than TOLERANCE
     """
-    last_read = readadc_with_settings() # initial reading
     change_threshold_met = False
     buffer_before_threshold = create_buffer(NUM_BEFORE)
     while not change_threshold_met:
@@ -116,35 +115,47 @@ def run_until_threshold(NUM_BEFORE, TOLERANCE, SLEEP_TIME, MEAN):
         if (change > TOLERANCE):
             print("Change threshold met!")
             change_threshold_met = True
-        last_read = acc_read
         time.sleep(SLEEP_TIME) # hang out and do nothing for x seconds
     return buffer_before_threshold
 
-def record_data(NUM_MEASUREMENTS, SLEEP_TIME, SAVE_FILE_NAME, MAX_TIME, MEAN):
+def record_data(NUM_MEASUREMENTS, END_TOLERANCE, SLEEP_TIME, SAVE_FILE_NAME, MAX_TIME, MEAN):
     """
     Records data to save into <SAVE_FILE_NAME>.csv
     Starts recording after RUN_UNTIL_THRESHOLD() finishes executing
+    Stops recording after 100 measurements in a row change less than END_TOLERANCE.
     """
     start_time = datetime.now()
+    last_read = readadc_with_settings() # initial reading
     writer = csv.writer(open(SAVE_FILE_NAME, "a"))
-    for i in range(NUM_MEASUREMENTS):
+    num_without_change = 0
+    i = 0
+    while (i < NUM_MEASUREMENTS) and (time_until_now(start_time) < MAX_TIME):
         acc_read = readadc_with_settings() # read the analog pin
     	writer.writerow([timestamp(), acc_read - MEAN])
-        time.sleep(SLEEP_TIME) # hang out and do nothing for x seconds
-        if (time_until_now(start_time) > MAX_TIME):
+        change = abs(acc_read - last_read)
+        if (change < END_TOLERANCE):
+            num_without_change += 1
+        else:
+            num_without_change = 0
+        last_read = acc_read
+        i += 1
+        if (num_without_change > 100):
+            print("End threshold met at: "+str(i)+" measurements!")
             break
-    return (time_until_now(start_time), i+1)
+        time.sleep(SLEEP_TIME) # hang out and do nothing for x seconds
+    return (time_until_now(start_time), i)
 
 
 def main():
     # GPIO.setmode(GPIO.BCM)
     # ~~~~~~~ OPTIONS TO CONFIGURE ~~~~~~~~~
     num_before_threshold = 20
-    num_measurements = 1000
-    tolerance = 2
+    tolerance = 5
+    end_tolerance = 5
     sleep_time = 0.001
     save_file_name =  "saved_CSVs/our_data.csv"
     max_time = float("inf")
+    num_measurements = float("inf")
     # ~~~~~~~ ==================== ~~~~~~~~~
     parser = argparse.ArgumentParser(description='Records data from an ADC')
     parser.add_argument('-b','--before', help='Number of samples that will be saved from just before we hit the threshold.', required=False)
@@ -153,6 +164,7 @@ def main():
     parser.add_argument('-s','--sleeptime', help='How much to sleep in between measurements.', required=False)
     parser.add_argument('-f','--filename', help='Filename to save to. Looks like "saved_CSVs/<FILENAME>.csv"', required=False)
     parser.add_argument('-m','--maxtime', help='Upper limit on the recording time. Starts *after* you hit threshold.', required=False)
+    parser.add_argument('-e','--endtolerance', help='Stops recording after 100 measurements in a row change less than END_TOLERANCE.', required=False)
     args = vars(parser.parse_args())
     if args['before']:
         num_before_threshold = int(args['before'])
@@ -166,11 +178,13 @@ def main():
         save_file_name =  "saved_CSVs/"+args['filename']+".csv"
     if args['maxtime']:
         max_time = float(args['maxtime'])
+    if args['endtolerance']:
+        end_tolerance = float(args['endtolerance'])
     # ~~~~~~~ ==================== ~~~~~~~~~
     mean = establish_mean(100)
     buffer_before_threshold = run_until_threshold(num_before_threshold, tolerance, sleep_time, mean)
     save_buf_to_file(buffer_before_threshold, save_file_name)
-    time_taken, actual_num_measurements = record_data(num_measurements, sleep_time, save_file_name, max_time, mean)
+    time_taken, actual_num_measurements = record_data(num_measurements, end_tolerance, sleep_time, save_file_name, max_time, mean)
     # ~~~~~~~   HELPFUL MESSAGES   ~~~~~~~~~
     print("\nData Recording Complete.")
     print("  Num Measurements: "+str(actual_num_measurements))
