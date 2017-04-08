@@ -111,7 +111,7 @@ def run_until_threshold(NUM_BEFORE, TOLERANCE, SLEEP_TIME, T):
     while not change_threshold_met:
         acc_read = readadc_with_settings() # read the analog pin
         buffer_before_threshold = add_to_buffer(buffer_before_threshold, [timestamp(), T(acc_read)])
-        change = abs(acc_read - last_read) # how much has it changed since the last read?
+        change = abs(T(acc_read)) # how different is it from the mean?
         if (change > TOLERANCE):
             print("Change threshold met!")
             change_threshold_met = True
