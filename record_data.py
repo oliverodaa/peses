@@ -176,7 +176,7 @@ def main():
     print("\nData Recording Complete.")
     print("  Num Measurements: "+str(actual_num_measurements))
     print("  Time Taken      : "+str(time_taken)+" seconds")
-    print("  Measures/second : "+str(actual_measurements/time_taken))
+    print("  Measures/second : "+str(actual_num_measurements/time_taken))
     print("  Saved To        : "+save_file_name)
     print("  Tolerance       : "+str(tolerance))
 
