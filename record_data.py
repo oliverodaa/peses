@@ -95,7 +95,13 @@ def save_buf_to_file(my_buffer, SAVE_FILE_NAME):
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-def run_until_threshold(NUM_BEFORE, TOLERANCE, SLEEP_TIME):
+def establish_mean(num_samples):
+    total = 0.0
+    for i in range(num_samples):
+        total += readadc_with_settings() / num_samples
+    return total
+
+def run_until_threshold(NUM_BEFORE, TOLERANCE, SLEEP_TIME, MEAN):
     """
     Runs until we have a point-to-point difference of more than TOLERANCE
     """
@@ -104,7 +110,7 @@ def run_until_threshold(NUM_BEFORE, TOLERANCE, SLEEP_TIME):
     buffer_before_threshold = create_buffer(NUM_BEFORE)
     while not change_threshold_met:
         acc_read = readadc_with_settings() # read the analog pin
-        buffer_before_threshold = add_to_buffer(buffer_before_threshold, [timestamp(), acc_read])
+        buffer_before_threshold = add_to_buffer(buffer_before_threshold, [timestamp(), acc_read - MEAN])
         change = abs(acc_read - last_read) # how much has it changed since the last read?
         if (change > TOLERANCE):
             print("Change threshold met!")
@@ -113,7 +119,7 @@ def run_until_threshold(NUM_BEFORE, TOLERANCE, SLEEP_TIME):
         time.sleep(SLEEP_TIME) # hang out and do nothing for x seconds
     return buffer_before_threshold
 
-def record_data(NUM_MEASUREMENTS, SLEEP_TIME, SAVE_FILE_NAME, MAX_TIME):
+def record_data(NUM_MEASUREMENTS, SLEEP_TIME, SAVE_FILE_NAME, MAX_TIME, MEAN):
     """
     Records data to save into <SAVE_FILE_NAME>.csv
     Starts recording after RUN_UNTIL_THRESHOLD() finishes executing
@@ -122,7 +128,7 @@ def record_data(NUM_MEASUREMENTS, SLEEP_TIME, SAVE_FILE_NAME, MAX_TIME):
     writer = csv.writer(open(SAVE_FILE_NAME, "a"))
     for i in range(NUM_MEASUREMENTS):
         acc_read = readadc_with_settings() # read the analog pin
-    	writer.writerow([timestamp(), acc_read])
+    	writer.writerow([timestamp(), acc_read - MEAN])
         time.sleep(SLEEP_TIME) # hang out and do nothing for x seconds
         if (time_until_now(start_time) > MAX_TIME):
             break
@@ -160,9 +166,10 @@ def main():
     if args['maxtime']:
         max_time = float(args['maxtime'])
     # ~~~~~~~ ==================== ~~~~~~~~~
-    buffer_before_threshold = run_until_threshold(num_before_threshold, tolerance, sleep_time)
+    mean = establish_mean(100)
+    buffer_before_threshold = run_until_threshold(num_before_threshold, tolerance, sleep_time, mean)
     save_buf_to_file(buffer_before_threshold, save_file_name)
-    time_taken, actual_measurements = record_data(num_measurements, sleep_time, save_file_name, max_time)
+    time_taken, actual_measurements = record_data(num_measurements, sleep_time, save_file_name, max_time, mean)
     # ~~~~~~~   HELPFUL MESSAGES   ~~~~~~~~~
     print("\nData Recording Complete.")
     print("  Num Measurements: "+str(actual_measurements))
