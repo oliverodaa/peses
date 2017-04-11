@@ -37,11 +37,19 @@ def readadc(adcnum, clockpin, mosipin, misopin, cspin):
     # adcout >>= 1       # first bit is 'null' so drop it
     # return adcout
 
+CURRENT_ROW = 0
+
 def readadc_with_settings():
     # change these as desired - they're the pins connected from the
     # SPI port on the ADC to the pins on the Raspberry Pi
-    if (True):
-        return random.gauss(500, 2)
+    global CURRENT_ROW
+    with open('saved_CSVs/pulse_heavy_long.csv', 'rb') as csvfile:
+        CURRENT_ROW = CURRENT_ROW + 1
+        if (CURRENT_ROW % 100 == 0):
+            print("now reading: "+str(CURRENT_ROW))
+        return float(list(csv.reader(csvfile, delimiter=' ', quotechar='|'))[CURRENT_ROW-1][0].split(",")[1])
+    # if (True):
+    #     return random.gauss(500, 2)
     # SPICLK = 18
     # SPIMISO = 23
     # SPIMOSI = 24
@@ -99,8 +107,8 @@ def save_buf_to_file(my_buffer, SAVE_FILE_NAME):
 def establish_mean(num_samples):
     total = 0.0
     for i in range(num_samples):
-        total += readadc_with_settings() / num_samples
-    return total
+        total += readadc_with_settings()
+    return total / float(num_samples)
 
 def run_until_threshold(NUM_BEFORE, TOLERANCE, SLEEP_TIME, MEAN):
     """
@@ -118,7 +126,7 @@ def run_until_threshold(NUM_BEFORE, TOLERANCE, SLEEP_TIME, MEAN):
         time.sleep(SLEEP_TIME) # hang out and do nothing for x seconds
     return buffer_before_threshold
 
-def record_data(NUM_MEASUREMENTS, END_TOLERANCE, SLEEP_TIME, SAVE_FILE_NAME, MAX_TIME, MEAN):
+def record_data(NUM_MEASUREMENTS, TOLERANCE, END_TOLERANCE, SLEEP_TIME, SAVE_FILE_NAME, MAX_TIME, MEAN):
     """
     Records data to save into <SAVE_FILE_NAME>.csv
     Starts recording after RUN_UNTIL_THRESHOLD() finishes executing
@@ -133,13 +141,13 @@ def record_data(NUM_MEASUREMENTS, END_TOLERANCE, SLEEP_TIME, SAVE_FILE_NAME, MAX
         acc_read = readadc_with_settings() # read the analog pin
     	writer.writerow([timestamp(), acc_read - MEAN])
         change = abs(acc_read - last_read)
-        if (change < END_TOLERANCE):
+        if (change < TOLERANCE):
             num_without_change += 1
         else:
             num_without_change = 0
         last_read = acc_read
         i += 1
-        if (num_without_change > 100):
+        if (num_without_change > END_TOLERANCE):
             print("End threshold met at: "+str(i)+" measurements!")
             break
         time.sleep(SLEEP_TIME) # hang out and do nothing for x seconds
@@ -159,12 +167,12 @@ def main():
     # ~~~~~~~ ==================== ~~~~~~~~~
     parser = argparse.ArgumentParser(description='Records data from an ADC')
     parser.add_argument('-b','--before', help='Number of samples that will be saved from just before we hit the threshold.', required=False)
-    parser.add_argument('-n','--num', help='Number of samples that will be saved.', required=False)
+    parser.add_argument('-n','--num', help='Number of samples that will be saved. Defaults to infinity.', required=False)
     parser.add_argument('-t','--tolerance', help='The amount that the table needs to shake before recording will start.', required=False)
     parser.add_argument('-s','--sleeptime', help='How much to sleep in between measurements.', required=False)
     parser.add_argument('-f','--filename', help='Filename to save to. Looks like "saved_CSVs/<FILENAME>.csv"', required=False)
-    parser.add_argument('-m','--maxtime', help='Upper limit on the recording time. Starts *after* you hit threshold.', required=False)
-    parser.add_argument('-e','--endtolerance', help='Stops recording after 100 measurements in a row change less than END_TOLERANCE.', required=False)
+    parser.add_argument('-m','--maxtime', help='Upper limit on the recording time. Starts *after* you hit threshold. Default time infinity.', required=False)
+    parser.add_argument('-e','--endtolerance', help='Stops recording after ENDTOLERANCE measurements in a row change less than TOLERANCE.', required=False)
     args = vars(parser.parse_args())
     if args['before']:
         num_before_threshold = int(args['before'])
@@ -186,7 +194,7 @@ def main():
     buffer_before_threshold = run_until_threshold(num_before_threshold, tolerance, sleep_time, mean)
     save_buf_to_file(buffer_before_threshold, save_file_name)
     # Runs from start of earthquake until end as defined by end_tolerance
-    time_taken, actual_num_measurements = record_data(num_measurements, end_tolerance, sleep_time, save_file_name, max_time, mean)
+    time_taken, actual_num_measurements = record_data(num_measurements, tolerance, end_tolerance, sleep_time, save_file_name, max_time, mean)
     # ~~~~~~~   HELPFUL MESSAGES   ~~~~~~~~~
     print("\nData Recording Complete.")
     print("  Num Measurements: "+str(actual_num_measurements))
