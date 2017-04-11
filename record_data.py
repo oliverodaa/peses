@@ -182,8 +182,10 @@ def main():
         end_tolerance = float(args['endtolerance'])
     # ~~~~~~~ ==================== ~~~~~~~~~
     mean = establish_mean(100)
+    # Run until earthquake detected
     buffer_before_threshold = run_until_threshold(num_before_threshold, tolerance, sleep_time, mean)
     save_buf_to_file(buffer_before_threshold, save_file_name)
+    # Runs from start of earthquake until end as defined by end_tolerance
     time_taken, actual_num_measurements = record_data(num_measurements, end_tolerance, sleep_time, save_file_name, max_time, mean)
     # ~~~~~~~   HELPFUL MESSAGES   ~~~~~~~~~
     print("\nData Recording Complete.")
@@ -192,6 +194,7 @@ def main():
     print("  Measures/second : "+str(actual_num_measurements/time_taken))
     print("  Saved To        : "+save_file_name)
     print("  Tolerance       : "+str(tolerance))
+    print("  EndTolerance    : "+str(end_tolerance))
 
 if __name__ == "__main__":
     main()
