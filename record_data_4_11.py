@@ -155,7 +155,6 @@ def record_data(NUM_MEASUREMENTS, TOLERANCE, END_TOLERANCE, SLEEP_TIME, SAVE_FIL
 
 def main():
     GPIO.setmode(GPIO.BCM)
-    GPIO.setwarnings(False)
     # ~~~~~~~ OPTIONS TO CONFIGURE ~~~~~~~~~
     num_before_threshold = 20
     tolerance = 5
@@ -190,7 +189,6 @@ def main():
         end_tolerance = float(args['endtolerance'])
     # ~~~~~~~ ==================== ~~~~~~~~~
     mean = establish_mean(100)
-    print mean
     # Run until earthquake detected
     buffer_before_threshold = run_until_threshold(num_before_threshold, tolerance, sleep_time, mean)
     save_buf_to_file(buffer_before_threshold, save_file_name)

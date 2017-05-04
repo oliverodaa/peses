@@ -4,7 +4,9 @@ import os
 import csv
 import random
 import argparse
-import RPi.GPIO as GPIO
+from numpy import genfromtxt
+import matplotlib.pyplot as plt
+# import RPi.GPIO as GPIO
 
 # read SPI data from MCP3008 chip, 8 possible adc's (0 thru 7)
 def readadc(adcnum, clockpin, mosipin, misopin, cspin):
@@ -49,18 +51,19 @@ def read_from_csv(fname):
 def readadc_with_settings():
     # change these as desired - they're the pins connected from the
     # SPI port on the ADC to the pins on the Raspberry Pi
-    SPICLK = 18
-    SPIMISO = 23
-    SPIMOSI = 24
-    SPICS = 25
-    # # set up the SPI interface pins
-    GPIO.setup(SPIMOSI, GPIO.OUT)
-    GPIO.setup(SPIMISO, GPIO.IN)
-    GPIO.setup(SPICLK, GPIO.OUT)
-    GPIO.setup(SPICS, GPIO.OUT)
-    # # 10k trim pot connected to adc #0
-    adcnum = 0
-    return readadc(adcnum, SPICLK, SPIMOSI, SPIMISO, SPICS)
+    # SPICLK = 18
+    # SPIMISO = 23
+    # SPIMOSI = 24
+    # SPICS = 25
+    # # # set up the SPI interface pins
+    # GPIO.setup(SPIMOSI, GPIO.OUT)
+    # GPIO.setup(SPIMISO, GPIO.IN)
+    # GPIO.setup(SPICLK, GPIO.OUT)
+    # GPIO.setup(SPICS, GPIO.OUT)
+    # # # 10k trim pot connected to adc #0
+    # adcnum = 0
+    # return readadc(adcnum, SPICLK, SPIMOSI, SPIMISO, SPICS)
+    return read_from_csv("saved_CSVs/pulse_elastic.csv")
 
 # ~~~~~~~ Time Helpers ~~~~~~~~~~~~~
 
@@ -154,8 +157,7 @@ def record_data(NUM_MEASUREMENTS, TOLERANCE, END_TOLERANCE, SLEEP_TIME, SAVE_FIL
 
 
 def main():
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setwarnings(False)
+    # GPIO.setmode(GPIO.BCM)
     # ~~~~~~~ OPTIONS TO CONFIGURE ~~~~~~~~~
     num_before_threshold = 20
     tolerance = 5
@@ -190,12 +192,18 @@ def main():
         end_tolerance = float(args['endtolerance'])
     # ~~~~~~~ ==================== ~~~~~~~~~
     mean = establish_mean(100)
-    print mean
     # Run until earthquake detected
     buffer_before_threshold = run_until_threshold(num_before_threshold, tolerance, sleep_time, mean)
     save_buf_to_file(buffer_before_threshold, save_file_name)
     # Runs from start of earthquake until end as defined by end_tolerance
     time_taken, actual_num_measurements = record_data(num_measurements, tolerance, end_tolerance, sleep_time, save_file_name, max_time, mean)
+    # Make a chart appear of the CSV we just generated
+    per_data = genfromtxt(save_file_name,delimiter=',')
+    plt.plot(per_data)
+    plt.xlabel ('Time [MilliSeconds]')
+    plt.ylabel ('Acceleration [0.01 G]')
+    plt.title('Recorded Ground Motion')
+    plt.show()
     # ~~~~~~~   HELPFUL MESSAGES   ~~~~~~~~~
     print("\nData Recording Complete.")
     print("  Num Measurements: "+str(actual_num_measurements))
