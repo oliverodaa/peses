@@ -158,7 +158,7 @@ def record_data(NUM_MEASUREMENTS, TOLERANCE, END_TOLERANCE, SLEEP_TIME, SAVE_FIL
 
 def main():
     GPIO.setmode(GPIO.BCM)
-    GPIO.setWarnings(False)
+    GPIO.setwarnings(False)
     # ~~~~~~~ OPTIONS TO CONFIGURE ~~~~~~~~~
     num_before_threshold = 20
     tolerance = 5
